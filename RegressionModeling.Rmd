@@ -31,43 +31,58 @@ summary(df)
 
 ```
 
-## Regression Analysis
-
-```{r, echo=TRUE}
-library(dplyr)
-group_by(df, am) %>% summarise(mean_mpg = mean(mpg))
-```
-We can see that the difference of 7.24 is significant so we conduct a t.test
+## Regression Models
 ```{r,echo=TRUE}
 ttest <- t.test(df[df$am == 'automatic', 'mpg'],df[df$am == 'manual', 'mpg'])
-ttest$conf.int
-ttest$p.value < 0.05
+ttest
 ```
-We can see that the confidence interval does not contain 0 and the p-value is less than  0.05 so we can reject the null hyphotesis(no difference in means).
+The mpg difference between automatic and manual trasmission is significant (~7.25) according to p-value (. we have to reject null hiphotesis.
 
-Now we can try to see the relationship between MPG and transmission to see if they are related and if the variance in MPG is explain by transmission. And also how much of this variation is explain by the model(R2)
-```{r,echo=TRUE}
-model_1 <- lm(mpg~am,data = df)
-summary(model_1)
+Let's check how mpg correlates with all other variables:
+```{r, fig.width=12, fig.height=12, echo=FALSE}
+pairs(mpg ~ ., data = df)
 ```
-The intercept tells us that the median of Automatic is 17.14 and the median of Manual is 7.24 units higher. The p-value for this model is 0.00028, which tells us that the coefficients are statistically significant. Finally, Transmission explains 36% of the variance between means, it might be suitable to explore more variables so the variance can be explained better. Now we compute a second model.
+As we can see all other variables correlate with mpg but only a part of them correlate with transmission type: disp, hp, wt, qsec.
+
+Let's create direct model between MPG and AM variables.
 ```{r,echo=TRUE}
-model2 <- lm(mpg~am+cyl+disp+hp+wt,data = df)
-summary(model2)
-anova(model_1,model2)
+m1 <- lm(mpg ~ am, data = df)
+summary(m1)
 ```
-In this second model we can see that there are other variables that are statistically significant and now the variance in MPG is exaplained better with the inclussion of other variables (R-squared=87%). The p-value also is less than 0.05. And we can conclude that having a manual transmission could lead to a difference in means of 1.81 in MPG. Finally, check for homoskedastic in the appendix and according to the behaviour of the residuals this assumption holds.
+
+
+The intercept tells us that the median of Automatic is 17.14 and the median of Manual is 7.24 units higher. The p-value for this model is 0.000285, which tells us that the coefficients are statistically significant. Finally, Transmission explains 36% of the variance between means, it might be suitable to explore more variables so the variance can be explained better. Now we compute following models.
+```{r}
+m2 <- lm(mpg ~ am + disp, data = df)
+m3 <- lm(mpg ~ am + disp + hp, data = df)
+m4 <- lm(mpg ~ am + disp + hp + wt, data = df)
+m5 <- lm(mpg ~ am + disp + hp + wt + qsec, data = df)
+m <- c(am=m1$coef[2], disp=m2$coef[2], hp=m3$coef[2], wt=m4$coef[2], qsec=m5$coef[2])
+m
+summary(m)
+```
+It shows us that manual transmission coefficient allways positive, no matter what variable we do include in the models.
+```{r}
+anova(m1, m2, m3, m4, m5)
+```
+In this comparison we can see that there are other variables that are statistically significant. Let's take a look at the model with all of them:
+```{r}
+summary(m5)
+```
+
+Now the variance in MPG is exaplained better with the inclussion of other variables (R-squared=86%). The p-value also is less than 0.05. Finally, check for homoskedastic in the appendix and according to the behaviour of the residuals this assumption holds.
+
+## Conclusion
+
+Manual transmission inscreases MPG by means of 3.47, which is exact match for the median of different models. 
 
 ## Appendix
 ```{r,echo=TRUE}
-boxplot(mpg~am,data = df,col=c('green','light green'),ylab='Miles per gallon',xlab='Transmission',main='Comparing Transmission Means')
+boxplot(mpg~am,data = df,col=c('blue','red'),ylab='MPG',xlab='Transmission',main='MPG ~ Transmittion')
 ```
 
-```{r,echo=TRUE}
-pairs(mpg~.,data = df,col='blue')
-```
 
 ```{r,echo=TRUE}
 par(mfrow = c(2,2))
-plot(model2)
+plot(m5)
 ```
